@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="UTF-8">
+<title>Time Estimation Experiment</title>
+
+<link href="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/jspsych.css" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/jspsych.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/plugin-html-button-response.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/plugin-survey-text.js"></script>
+
+</head>
+
+<body></body>
+
+<script>
+
+const jsPsych = initJsPsych({
+on_finish: function(){
+jsPsych.data.displayData();
+}
+});
+
+let timeline = [];
+
+// Participant ID
+let participant = {
+type: jsPsychSurveyText,
+questions: [
+{prompt: "Παρακαλώ εισάγετε τον κωδικό συμμετοχής σας:"}
+],
+on_finish: function(data){
+let id = JSON.parse(data.responses).Q0;
+jsPsych.data.addProperties({participant: id});
+}
+};
+
+timeline.push(participant);
+
+// Instructions
+let instructions = {
+type: jsPsychHtmlButtonResponse,
+stimulus: `
+<p>Σε αυτό το πείραμα θα πατήσετε το κουμπί όταν πιστεύετε ότι πέρασαν:</p>
+<p><b>4, 6 ή 8 δευτερόλεπτα</b></p>
+<p>Συνολικά 9 δοκιμές.</p>
+`,
+choices: ["Ξεκινάμε"]
+};
+
+timeline.push(instructions);
+
+// Trials
+let targets = [4,4,4,6,6,6,8,8,8];
+targets = jsPsych.randomization.shuffle(targets);
+
+targets.forEach(function(target){
+
+timeline.push({
+
+type: jsPsychHtmlButtonResponse,
+
+stimulus: `<p>Πάτα το κουμπί όταν πιστεύεις ότι πέρασαν <b>${target}</b> δευτερόλεπτα</p>`,
+
+choices: ["Πάτησα"],
+
+on_start: function(trial){
+trial.start = performance.now();
+trial.target = target;
+},
+
+on_finish: function(data){
+
+let produced = (performance.now() - data.start)/1000;
+
+data.target = target;
+data.produced = produced;
+data.error = produced - target;
+
+}
+
+});
+
+});
+
+jsPsych.run(timeline);
+
+</script>
+
+</html>

@@ -1,92 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="el">
 <head>
-
 <meta charset="UTF-8">
-<title>Time Estimation Experiment</title>
+<title>Time Estimation Task - Cognition.run</title>
 
-<link href="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/jspsych.css" rel="stylesheet">
+<style>
+body {
+  background-color: #f5f5f5;
+  font-family: Arial, sans-serif;
+  padding: 30px;
+  text-align: center;
+}
+button {
+  padding: 15px 30px;
+  font-size: 18px;
+  cursor: pointer;
+}
+#task, #results, #idSection {
+  display: none;
+}
+pre {
+  text-align: left;
+  background: #fff;
+  padding: 15px;
+  border: 1px solid #ddd;
+  overflow-x: auto;
+}
+</style>
+</head>
+<body>
+
+<h2>Πείραμα Εκτίμησης Χρόνου</h2>
+
+<div id="idSection">
+  <p>Παρακαλώ εισάγετε τον κωδικό συμμετοχής σας:</p>
+  <input type="text" id="participantID" placeholder="π.χ. AB1234">
+  <br><br>
+  <button onclick="startTaskWithID()">Συνέχεια</button>
+</div>
+
+
+
+<div id="instructions">
+  <p>Σε αυτό το πείραμα θα σας ζητηθεί να πατήσετε ένα κουμπί όταν πιστεύετε ότι έχουν περάσει 4, 6 ή 8 δευτερόλεπτα.</p>
+  <p>Θα γίνουν 9 δοκιμές συνολικά.</p>
+  <button onclick="startTask()">Ξεκινάμε</button>
+</div>
+
+<div id="task">
+  <h3 id="trialLabel"></h3>
+  <p id="trialInstructions"></p>
+  <button onclick="recordTime()" id="pressBtn">Πάτα εδώ όταν πιστεύεις ότι πέρασε ο χρόνος</button>
+</div>
+
+<div id="results">
+  <h3>Αποτελέσματα</h3>
+  <pre id="output"></pre>
+  <p>Τα δεδομένα σας έχουν αποθηκευτεί στο σύστημα.</p>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/jspsych.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/plugin-html-button-response.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/plugin-survey-text.js"></script>
-
-</head>
-
-<body></body>
+<script src="https://cdn.jsdelivr.net/npm/jspsych@7.3.0/dist/plugins/jspsych-html-button-response.js"></script>
 
 <script>
+let participantID = "";
+let trials = [4,4,4,6,6,6,8,8,8];
+trials = trials.sort(() => Math.random() - 0.5);
 
-const jsPsych = initJsPsych({
-on_finish: function(){
-jsPsych.data.displayData();
-}
-});
+let current = 0;
+let startTime = 0;
+let results = [];
 
-let timeline = [];
+// --- Show Participant ID first ---
+document.getElementById("idSection").style.display = "block";
 
-// Participant ID
-let participant = {
-type: jsPsychSurveyText,
-questions: [
-{prompt: "Παρακαλώ εισάγετε τον κωδικό συμμετοχής σας:"}
-],
-on_finish: function(data){
-let id = JSON.parse(data.responses).Q0;
-jsPsych.data.addProperties({participant: id});
-}
-};
-
-timeline.push(participant);
-
-// Instructions
-let instructions = {
-type: jsPsychHtmlButtonResponse,
-stimulus: `
-<p>Σε αυτό το πείραμα θα πατήσετε το κουμπί όταν πιστεύετε ότι πέρασαν:</p>
-<p><b>4, 6 ή 8 δευτερόλεπτα</b></p>
-<p>Συνολικά 9 δοκιμές.</p>
-`,
-choices: ["Ξεκινάμε"]
-};
-
-timeline.push(instructions);
-
-// Trials
-let targets = [4,4,4,6,6,6,8,8,8];
-targets = jsPsych.randomization.shuffle(targets);
-
-targets.forEach(function(target){
-
-timeline.push({
-
-type: jsPsychHtmlButtonResponse,
-
-stimulus: `<p>Πάτα το κουμπί όταν πιστεύεις ότι πέρασαν <b>${target}</b> δευτερόλεπτα</p>`,
-
-choices: ["Πάτησα"],
-
-on_start: function(trial){
-trial.start = performance.now();
-trial.target = target;
-},
-
-on_finish: function(data){
-
-let produced = (performance.now() - data.start)/1000;
-
-data.target = target;
-data.produced = produced;
-data.error = produced - target;
-
+function startTaskWithID(){
+  const idInput = document.getElementById("participantID").value.trim();
+  if(idInput === ""){
+    alert("Παρακαλώ εισάγετε έναν μοναδικό κωδικό συμμετοχής!");
+    return;
+  }
+  participantID = idInput;
+  document.getElementById("idSection").style.display = "none";
+  document.getElementById("instructions").style.display = "block";
 }
 
-});
+// --- Start Task ---
+function startTask() {
+  document.getElementById("instructions").style.display = "none";
+  document.getElementById("task").style.display = "block";
+  nextTrial();
+}
 
-});
+// --- Trial Presentation ---
+function nextTrial() {
+  if (current >= trials.length) return endTask();
 
-jsPsych.run(timeline);
+  let target = trials[current];
 
+  document.getElementById("trialLabel").textContent =
+    `Δοκιμή ${current+1} από ${trials.length}`;
+
+  document.getElementById("trialInstructions").textContent =
+    `Πάτα το κουμπί όταν πιστεύεις ότι πέρασαν ${target} δευτερόλεπτα.`;
+
+  startTime = performance.now();
+}
+
+// --- Record Time ---
+function recordTime() {
+  let target = trials[current];
+  let rt = (performance.now() - startTime) / 1000;
+  let errorSigned = rt - target;
+  let errorAbs = Math.abs(errorSigned);
+
+  results.push({
+    participant: participantID,
+    trial: current + 1,
+    target: target,
+    produced: rt.toFixed(3),
+    signed_error: errorSigned.toFixed(3),
+    abs_error: errorAbs.toFixed(3)
+  });
+
+  current++;
+  nextTrial();
+}
+
+// --- End Task ---
+function endTask() {
+  document.getElementById("task").style.display = "none";
+  document.getElementById("results").style.display = "block";
+
+  let csv = "participant,trial,target,produced,signed_error,abs_error\n";
+  results.forEach(r => {
+    csv += `${r.participant},${r.trial},${r.target},${r.produced},${r.signed_error},${r.abs_error}\n`;
+  });
+
+  document.getElementById("output").textContent = csv;
+
+  // 🔴 ΣΤΕΙΛΕ ΔΕΔΟΜΕΝΑ ΣΤΟ GOOGLE SHEETS
+  fetch("https://script.google.com/macros/s/AKfycbxdJZEfywMus_DX_NA3SnWJekqwWKBrfnCIkg6Jz4agSB1NDMrDtIexb4wvQSywi_nH/exec", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(results)
+  })
+  .then(response => console.log("Data sent!"))
+  .catch(error => console.error("Error:", error));
+
+  // --- Cognition backup ---
+  if(window.jsPsych){
+    jsPsych.data.addProperties({participant: participantID});
+    results.forEach(r => jsPsych.data.write(r));
+  }
+}
 </script>
 
+</body>
 </html>
